@@ -13,11 +13,16 @@ var (
 
 type Config struct {
 	Telegram
+	Database
 }
 
 type Telegram struct {
 	AccessToken      string `env:"TELEGRAM_ACCESS_TOKEN"`
 	UpdatesIntervals int    `env:"TELEGRAM_ACCESS_INTERNALS"`
+}
+
+type Database struct {
+	Dsn string `env:"DATABASE_DSN"`
 }
 
 func ReadConfig() (*Config, error) {
