@@ -41,8 +41,10 @@ type userRepository interface {
 type notificationRepository interface {
 	CreateBuild(ctx context.Context, builder models.NotificationBuild) error
 	UpdateBuild(ctx context.Context, chatID, userID int64, builder models.NotificationBuild) error
+	GetClosestNotification(ctx context.Context, limit, offset int64, now time.Time) ([]models.Notification, error)
 	CreateNotification(ctx context.Context, notification *models.Notification) error
 	DeleteBuild(ctx context.Context, chatID, userID int64) error
+	Delete(ctx context.Context, chatID, userID int64) error
 	FindBuildByUserID(ctx context.Context, userID int64) (*models.NotificationBuild, error)
 }
 
@@ -166,4 +168,31 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 	}
 
 	return nil
+}
+
+func (s *Service) Notify(ctx context.Context) error {
+	now := time.Now()
+
+	notifications, err := s.notificationRepository.GetClosestNotification(ctx, 20, 0, now)
+	if err != nil {
+		return fmt.Errorf("error while get closest notifications: %w", err)
+	}
+
+	for _, n := range notifications {
+		if err := s.telegramSender.SendMessage(ctx, n.ChatID, buildNotifyMessage(n, now)); err != nil {
+			return fmt.Errorf("error while send message: %w", err)
+		}
+
+		if err := s.notificationRepository.Delete(ctx, n.ChatID, n.UserID); err != nil {
+			return fmt.Errorf("error while send message: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func buildNotifyMessage(n models.Notification, now time.Time) string {
+	return fmt.Sprintf(`
+		Эй! Не забудь что через %s будет %s - %s
+    `, n.EventAt.Sub(now).Abs().String(), n.Tag, n.Description)
 }

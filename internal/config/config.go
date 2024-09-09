@@ -2,6 +2,7 @@ package config
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -14,6 +15,11 @@ var (
 type Config struct {
 	Telegram
 	Database
+	NotifyWorker
+}
+
+type NotifyWorker struct {
+	Period time.Duration `env:"NOTIFY_WORKER_PERIOD"`
 }
 
 type Telegram struct {

@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/sqlite3"
@@ -146,4 +147,59 @@ func (r *Repository) DeleteBuild(ctx context.Context, chatID, userID int64) erro
 	}
 
 	return nil
+}
+
+func (r *Repository) Delete(ctx context.Context, chatID, userID int64) error {
+	query := driver.Delete(notificationsTableName).Where(goqu.Ex{"user_id": userID, "chat_id": chatID}).Prepared(true)
+
+	sqlQuery, args, err := query.ToSQL()
+	if err != nil {
+		return fmt.Errorf("sql build error: %w", err)
+	}
+
+	if _, err := r.db.ExecContext(ctx, sqlQuery, args...); err != nil {
+		return fmt.Errorf("execution error: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) GetClosestNotification(ctx context.Context, limit, offset int64, now time.Time) ([]models.Notification, error) {
+	query := driver.Select(
+		goqu.C("id"),
+		goqu.C("user_id"),
+		goqu.C("chat_id"),
+		goqu.C("tag"),
+		goqu.C("description"),
+		goqu.C("notify_at"),
+		goqu.C("event_at"),
+		goqu.C("created_at"),
+		goqu.C("updated_at"),
+	).From(notificationsTableName).Where(goqu.Ex{
+		"notify_at": goqu.Op{"lte": now},
+	}).Limit(uint(limit)).Offset(uint(offset)).Prepared(true)
+
+	sqlQuery, args, err := query.ToSQL()
+	if err != nil {
+		return nil, fmt.Errorf("sql build error: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, sqlQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var notifications []models.Notification
+	for rows.Next() {
+		n := models.Notification{}
+		if err := rows.Scan(&n.ID, &n.UserID, &n.ChatID,
+			&n.Tag, &n.Description,
+			&n.NotifyAt, &n.EventAt,
+			&n.CreatedAt, &n.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan notification error: %w", err)
+		}
+		notifications = append(notifications, n)
+	}
+
+	return notifications, nil
 }
