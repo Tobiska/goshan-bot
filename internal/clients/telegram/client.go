@@ -19,6 +19,7 @@ func New(cfg *config.Telegram) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("initialize bot error: %w", err)
 	}
+	bot.Debug = cfg.Debug
 
 	return &Client{
 		bot: bot,
@@ -26,8 +27,8 @@ func New(cfg *config.Telegram) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) GetUpdates(_ context.Context) ([]tgbotapi.Update, error) {
-	updateConfig := tgbotapi.NewUpdate(0) // update offset
+func (c *Client) GetUpdates(_ context.Context, offset int) ([]tgbotapi.Update, error) {
+	updateConfig := tgbotapi.NewUpdate(offset) // update offset
 	updateConfig.Timeout = c.cfg.UpdatesIntervals
 
 	return c.bot.GetUpdates(updateConfig)

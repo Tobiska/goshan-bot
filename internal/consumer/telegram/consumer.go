@@ -15,7 +15,7 @@ const (
 )
 
 type telegramClient interface {
-	GetUpdates(context.Context) ([]tgbotapi.Update, error)
+	GetUpdates(context.Context, int) ([]tgbotapi.Update, error)
 }
 
 type router interface {
@@ -35,8 +35,9 @@ func New(telegramClient telegramClient, router router) *Consumer {
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
-	for ctx.Err() != nil {
-		updates, err := c.telegramClient.GetUpdates(ctx)
+	currentOffset := 0
+	for ctx.Err() == nil {
+		updates, err := c.telegramClient.GetUpdates(ctx, currentOffset+1)
 		if err != nil {
 			return fmt.Errorf("get updates from telegram error: %w", err)
 		}
@@ -46,6 +47,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 				c.router.Route(ctx, &models.IncomingMessage{
 					ChatID:          upd.Message.Chat.ID,
 					Username:        upd.Message.From.UserName,
+					Text:            upd.Message.Text,
 					UsernameDisplay: upd.Message.From.UserName,
 					UserID:          upd.Message.From.ID,
 				})
@@ -54,8 +56,9 @@ func (c *Consumer) Run(ctx context.Context) error {
 			if upd.CallbackQuery != nil {
 				panic("doesn't implemented")
 			}
-		}
 
+			currentOffset = upd.UpdateID
+		}
 		c.wait()
 	}
 	return nil

@@ -20,11 +20,12 @@ func CreateFromBuild(build *NotificationBuild) *Notification {
 	}
 
 	return &Notification{
-		UserID:   build.UserID,
-		ChatID:   build.ChatID,
-		Tag:      *build.Tag,
-		EventAt:  *build.EventAt,
-		NotifyAt: build.EventAt.Add(-1 * *build.RemindIn),
+		UserID:      build.UserID,
+		ChatID:      build.ChatID,
+		Tag:         *build.Tag,
+		EventAt:     *build.EventAt,
+		Description: *build.Description,
+		NotifyAt:    build.EventAt.Add(-1 * *build.RemindIn),
 	}
 }
 

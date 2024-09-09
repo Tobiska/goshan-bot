@@ -19,6 +19,7 @@ type Config struct {
 type Telegram struct {
 	AccessToken      string `env:"TELEGRAM_ACCESS_TOKEN"`
 	UpdatesIntervals int    `env:"TELEGRAM_ACCESS_INTERNALS"`
+	Debug            bool   `env:"TELEGRAM_DEBUG"`
 }
 
 type Database struct {

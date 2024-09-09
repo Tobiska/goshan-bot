@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"log"
 
 	"goshan-bot/internal/models"
 )
@@ -45,21 +46,21 @@ func New(telegramClient telegramClient, userService userService, notificationSer
 func (r *Router) Route(ctx context.Context, msg *models.IncomingMessage) {
 	if msg.Text == "/start" {
 		if err := r.userService.StartCommand(ctx, *msg); err != nil {
-			// TODO log
+			log.Println(err)
 		}
 		return
 	}
 
 	if msg.Text == "/add" {
 		if err := r.notificationService.AddCommand(ctx, *msg); err != nil {
-			// TODO log
+			log.Println(err)
 		}
 		return
 	}
 
 	if msg.Text != "" {
 		if err := r.notificationService.HandleMessage(ctx, *msg); err != nil {
-			// TODO log
+			log.Println(err)
 		}
 		return
 	}

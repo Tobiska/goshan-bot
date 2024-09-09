@@ -40,8 +40,9 @@ type userRepository interface {
 
 type notificationRepository interface {
 	CreateBuild(ctx context.Context, builder models.NotificationBuild) error
-	UpdateBuild(ctx context.Context, builder models.NotificationBuild) error
+	UpdateBuild(ctx context.Context, chatID, userID int64, builder models.NotificationBuild) error
 	CreateNotification(ctx context.Context, notification *models.Notification) error
+	DeleteBuild(ctx context.Context, chatID, userID int64) error
 	FindBuildByUserID(ctx context.Context, userID int64) (*models.NotificationBuild, error)
 }
 
@@ -67,13 +68,14 @@ func (s *Service) AddCommand(ctx context.Context, message models.IncomingMessage
 		ChatID: message.ChatID,
 	})
 
-	if err != nil {
-		return fmt.Errorf("error while add create build notification: %w", err)
-	}
 	if errors.Is(err, ErrAlreadyExist) {
 		if err := s.telegramSender.SendMessage(ctx, message.ChatID, BuildAlreadyExistMessage); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
+	}
+
+	if err != nil {
+		return fmt.Errorf("error while add create build notification: %w", err)
 	}
 
 	if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddTagNextStepMessage); err != nil {
@@ -96,8 +98,8 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 		return nil
 	}
 
-	if build.Tag != nil {
-		err = s.notificationRepository.UpdateBuild(ctx, models.NotificationBuild{
+	if build.Tag == nil {
+		err = s.notificationRepository.UpdateBuild(ctx, message.ChatID, message.UserID, models.NotificationBuild{
 			Tag: &message.Text,
 		})
 		if err != nil {
@@ -107,8 +109,8 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 		if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddDescriptionNextStepMessage); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
-	} else if build.Description != nil {
-		err = s.notificationRepository.UpdateBuild(ctx, models.NotificationBuild{
+	} else if build.Description == nil {
+		err = s.notificationRepository.UpdateBuild(ctx, message.ChatID, message.UserID, models.NotificationBuild{
 			Description: &message.Text,
 		})
 		if err != nil {
@@ -118,7 +120,7 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 		if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddEventAtNextStepMessage); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
-	} else if build.EventAt != nil {
+	} else if build.EventAt == nil {
 		eventAt, err := time.Parse(time.DateTime, message.Text)
 		if err != nil {
 			if err := s.telegramSender.SendMessage(ctx, message.ChatID, EventAtParseErrorAtMessage); err != nil {
@@ -127,7 +129,7 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 			return nil
 		}
 
-		err = s.notificationRepository.UpdateBuild(ctx, models.NotificationBuild{
+		err = s.notificationRepository.UpdateBuild(ctx, message.ChatID, message.UserID, models.NotificationBuild{
 			EventAt: &eventAt,
 		})
 		if err != nil {
@@ -137,7 +139,7 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 		if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddRemindInNextStepMessage); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
-	} else if build.RemindIn != nil {
+	} else if build.RemindIn == nil {
 		remindMe, err := time.ParseDuration(message.Text)
 		if err != nil {
 			if err := s.telegramSender.SendMessage(ctx, message.ChatID, RemindMeParseErrorMessage); err != nil {
@@ -149,6 +151,11 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 		build.RemindIn = &remindMe
 
 		err = s.notificationRepository.CreateNotification(ctx, models.CreateFromBuild(build))
+		if err != nil {
+			return fmt.Errorf("create notification error: %w", err)
+		}
+
+		err = s.notificationRepository.DeleteBuild(ctx, message.ChatID, message.UserID)
 		if err != nil {
 			return fmt.Errorf("create notification error: %w", err)
 		}

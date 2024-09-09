@@ -57,14 +57,14 @@ func (s *Service) StartCommand(ctx context.Context, message models.IncomingMessa
 			return fmt.Errorf("user save error: %w", err)
 		}
 
-		if err := s.telegramSender.SendMessage(ctx, u.ChatID, UserSaveSuccessfullyMessage); err != nil {
+		if err := s.telegramSender.SendMessage(ctx, message.ChatID, UserSaveSuccessfullyMessage); err != nil {
 			return fmt.Errorf("user send message error: %w", err)
 		}
 		return nil
 
 	}
 
-	if err := s.telegramSender.SendMessage(ctx, u.ChatID, UserAlreadyExistMessage); err != nil {
+	if err := s.telegramSender.SendMessage(ctx, message.ChatID, UserAlreadyExistMessage); err != nil {
 		return fmt.Errorf("user send message error: %w", err)
 	}
 

@@ -3,7 +3,8 @@ CREATE TABLE users (
     user_id INTEGER, -- userID инициатора взаимодействия.
     username VARCHAR(255), -- username инициатора взаимодействия.
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- created_at
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP -- updated_at
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- updated_at
+    PRIMARY KEY (chat_id, user_id)
 );
 
 CREATE TABLE notifications (
@@ -19,12 +20,13 @@ CREATE TABLE notifications (
 );
 
 CREATE TABLE notifications_build (
-   chat_id INTEGER primary key, -- telegram chatID.
-   user_id INTEGER primary key, -- userID инициатора взаимодействия.
+   chat_id INTEGER, -- telegram chatID.
+   user_id INTEGER, -- userID инициатора взаимодействия.
    tag VARCHAR(255), -- username инициатора взаимодействия.
    description text, -- описание события.
    notify_at DATETIME,
    event_at DATETIME,
    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+   PRIMARY KEY (chat_id, user_id)
 );

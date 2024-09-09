@@ -7,6 +7,8 @@ import (
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/sqlite3"
 
+	_ "github.com/golang-migrate/migrate/source/file"
+
 	"goshan-bot/internal/config"
 )
 
@@ -30,7 +32,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	m, err := migrate.NewWithDatabaseInstance("file://db/migrations/sqlite3", "database", driver)
+	m, err := migrate.NewWithDatabaseInstance("file://migrations/sqlite", "database", driver)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := m.Up(); err != nil {
 		log.Fatal(err)
 	}
