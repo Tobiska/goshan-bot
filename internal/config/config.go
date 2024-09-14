@@ -24,7 +24,7 @@ type NotifyWorker struct {
 
 type Telegram struct {
 	AccessToken      string `env:"TELEGRAM_ACCESS_TOKEN"`
-	UpdatesIntervals int    `env:"TELEGRAM_ACCESS_INTERNALS"`
+	UpdatesIntervals int    `env:"TELEGRAM_ACCESS_INTERVALS" env_default:"60"`
 	Debug            bool   `env:"TELEGRAM_DEBUG"`
 }
 

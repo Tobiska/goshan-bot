@@ -19,7 +19,7 @@ type userRepository interface {
 }
 
 type telegramSender interface {
-	SendMessage(ctx context.Context, chatID int64, text string) error
+	SendTextMessage(ctx context.Context, chatID int64, text string) error
 }
 
 type Service struct {
@@ -39,7 +39,7 @@ func (s *Service) StartCommand(ctx context.Context, message models.IncomingMessa
 
 	defer func() {
 		if err != nil {
-			_ = s.telegramSender.SendMessage(ctx, message.ChatID, UserSaveFailedMessage)
+			_ = s.telegramSender.SendTextMessage(ctx, message.ChatID, UserSaveFailedMessage)
 		}
 	}()
 
@@ -57,14 +57,14 @@ func (s *Service) StartCommand(ctx context.Context, message models.IncomingMessa
 			return fmt.Errorf("user save error: %w", err)
 		}
 
-		if err := s.telegramSender.SendMessage(ctx, message.ChatID, UserSaveSuccessfullyMessage); err != nil {
+		if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, UserSaveSuccessfullyMessage); err != nil {
 			return fmt.Errorf("user send message error: %w", err)
 		}
 		return nil
 
 	}
 
-	if err := s.telegramSender.SendMessage(ctx, message.ChatID, UserAlreadyExistMessage); err != nil {
+	if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, UserAlreadyExistMessage); err != nil {
 		return fmt.Errorf("user send message error: %w", err)
 	}
 

@@ -17,7 +17,7 @@ const (
 )
 
 type telegramClient interface {
-	SendMessage(context.Context, int64, string) error
+	SendTextMessage(context.Context, int64, string) error
 }
 
 type userService interface {

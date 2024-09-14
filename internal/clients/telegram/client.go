@@ -34,7 +34,7 @@ func (c *Client) GetUpdates(_ context.Context, offset int) ([]tgbotapi.Update, e
 	return c.bot.GetUpdates(updateConfig)
 }
 
-func (c *Client) SendMessage(_ context.Context, chatID int64, text string) error {
+func (c *Client) SendTextMessage(_ context.Context, chatID int64, text string) error {
 	msgConfig := tgbotapi.NewMessage(chatID, text)
 
 	_, err := c.bot.Send(msgConfig)
@@ -42,5 +42,13 @@ func (c *Client) SendMessage(_ context.Context, chatID int64, text string) error
 		return err
 	}
 
+	return nil
+}
+
+func (c *Client) SendMessage(_ context.Context, message tgbotapi.MessageConfig) error {
+	_, err := c.bot.Send(message)
+	if err != nil {
+		return err
+	}
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"time"
 
 	"goshan-bot/internal/models"
@@ -31,7 +32,8 @@ var (
 )
 
 type telegramSender interface {
-	SendMessage(ctx context.Context, chatID int64, text string) error
+	SendTextMessage(ctx context.Context, chatID int64, text string) error
+	SendMessage(ctx context.Context, message tgbotapi.MessageConfig) error
 }
 
 type userRepository interface {
@@ -71,7 +73,7 @@ func (s *Service) AddCommand(ctx context.Context, message models.IncomingMessage
 	})
 
 	if errors.Is(err, ErrAlreadyExist) {
-		if err := s.telegramSender.SendMessage(ctx, message.ChatID, BuildAlreadyExistMessage); err != nil {
+		if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, BuildAlreadyExistMessage); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
 	}
@@ -80,7 +82,7 @@ func (s *Service) AddCommand(ctx context.Context, message models.IncomingMessage
 		return fmt.Errorf("error while add create build notification: %w", err)
 	}
 
-	if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddTagNextStepMessage); err != nil {
+	if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, AddTagNextStepMessage); err != nil {
 		return fmt.Errorf("error while send message: %w", err)
 	}
 
@@ -94,7 +96,7 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 	}
 
 	if build == nil {
-		if err := s.telegramSender.SendMessage(ctx, message.ChatID, BuildNotExistMessage); err != nil {
+		if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, BuildNotExistMessage); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
 		return nil
@@ -108,7 +110,7 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 			return fmt.Errorf("error while update build: %w", err)
 		}
 
-		if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddDescriptionNextStepMessage); err != nil {
+		if err := s.reactOnTag(ctx, message); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
 	} else if build.Description == nil {
@@ -119,13 +121,13 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 			return fmt.Errorf("error while update build: %w", err)
 		}
 
-		if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddEventAtNextStepMessage); err != nil {
-			return fmt.Errorf("error while send message: %w", err)
+		if err := s.reactOnDescription(ctx, message); err != nil {
+			return fmt.Errorf("error while react: %w", err)
 		}
 	} else if build.EventAt == nil {
 		eventAt, err := time.Parse(time.DateTime, message.Text)
 		if err != nil {
-			if err := s.telegramSender.SendMessage(ctx, message.ChatID, EventAtParseErrorAtMessage); err != nil {
+			if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, EventAtParseErrorAtMessage); err != nil {
 				return fmt.Errorf("error while send message: %w", err)
 			}
 			return nil
@@ -138,13 +140,13 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 			return fmt.Errorf("error while update build: %w", err)
 		}
 
-		if err := s.telegramSender.SendMessage(ctx, message.ChatID, AddRemindInNextStepMessage); err != nil {
-			return fmt.Errorf("error while send message: %w", err)
+		if err := s.reactOnEventAt(ctx, message); err != nil {
+			return fmt.Errorf("error while react: %w", err)
 		}
 	} else if build.RemindIn == nil {
 		remindMe, err := time.ParseDuration(message.Text)
 		if err != nil {
-			if err := s.telegramSender.SendMessage(ctx, message.ChatID, RemindMeParseErrorMessage); err != nil {
+			if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, RemindMeParseErrorMessage); err != nil {
 				return fmt.Errorf("error while send message: %w", err)
 			}
 			return nil
@@ -162,7 +164,7 @@ func (s *Service) HandleMessage(ctx context.Context, message models.IncomingMess
 			return fmt.Errorf("create notification error: %w", err)
 		}
 
-		if err := s.telegramSender.SendMessage(ctx, message.ChatID, BuildDoneMessage); err != nil {
+		if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, BuildDoneMessage); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
 	}
@@ -179,7 +181,7 @@ func (s *Service) Notify(ctx context.Context) error {
 	}
 
 	for _, n := range notifications {
-		if err := s.telegramSender.SendMessage(ctx, n.ChatID, buildNotifyMessage(n, now)); err != nil {
+		if err := s.telegramSender.SendTextMessage(ctx, n.ChatID, buildNotifyMessage(n, now)); err != nil {
 			return fmt.Errorf("error while send message: %w", err)
 		}
 
@@ -195,4 +197,34 @@ func buildNotifyMessage(n models.Notification, now time.Time) string {
 	return fmt.Sprintf(`
 		Эй! Не забудь что через %s будет %s - %s
     `, n.EventAt.Sub(now).Abs().String(), n.Tag, n.Description)
+}
+
+func (s *Service) reactOnTag(ctx context.Context, message models.IncomingMessage) error {
+	if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, AddDescriptionNextStepMessage); err != nil {
+		return fmt.Errorf("error while send message: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) reactOnDescription(ctx context.Context, message models.IncomingMessage) error {
+	if err := s.telegramSender.SendTextMessage(ctx, message.ChatID, AddEventAtNextStepMessage); err != nil {
+		return fmt.Errorf("error while send message: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) reactOnEventAt(ctx context.Context, message models.IncomingMessage) error {
+	msgConfig := tgbotapi.NewMessage(message.ChatID, message.Text)
+	msgConfig.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("1h", "1h"),
+			tgbotapi.NewInlineKeyboardButtonData("30m", "1h"),
+			tgbotapi.NewInlineKeyboardButtonData("5m", "1h"),
+		),
+	)
+	if err := s.telegramSender.SendMessage(ctx, msgConfig); err != nil {
+		return fmt.Errorf("error while send message: %w", err)
+	}
+	return nil
 }
