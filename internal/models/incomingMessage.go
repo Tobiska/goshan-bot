@@ -7,5 +7,5 @@ type IncomingMessage struct {
 	UsernameDisplay string
 	Text            string
 	IsCallback      bool
-	CallbackMsgID   string
+	CallbackMsgID   int
 }

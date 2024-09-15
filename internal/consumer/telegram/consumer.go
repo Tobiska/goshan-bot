@@ -16,10 +16,12 @@ const (
 
 type telegramClient interface {
 	GetUpdates(context.Context, int) ([]tgbotapi.Update, error)
+	DeleteInlineButtons(_ context.Context, chatID int64, messageID int) error
 }
 
 type router interface {
-	Route(context.Context, *models.IncomingMessage)
+	RouteMessage(context.Context, *models.IncomingMessage)
+	RouteCallback(ctx context.Context, msg *models.IncomingMessage)
 }
 
 type Consumer struct {
@@ -44,17 +46,31 @@ func (c *Consumer) Run(ctx context.Context) error {
 
 		for _, upd := range updates {
 			if upd.Message != nil {
-				c.router.Route(ctx, &models.IncomingMessage{
+				c.router.RouteMessage(ctx, &models.IncomingMessage{
 					ChatID:          upd.Message.Chat.ID,
 					Username:        upd.Message.From.UserName,
 					Text:            upd.Message.Text,
 					UsernameDisplay: upd.Message.From.UserName,
 					UserID:          upd.Message.From.ID,
+					IsCallback:      false,
 				})
 			}
 
 			if upd.CallbackQuery != nil {
-				panic("doesn't implemented")
+				if err := c.telegramClient.DeleteInlineButtons(ctx, upd.CallbackQuery.Message.Chat.ID, upd.CallbackQuery.Message.MessageID); err != nil {
+					return fmt.Errorf("error while deleting inline buttons from message: %w", err)
+				}
+
+				c.router.RouteMessage(ctx, &models.IncomingMessage{
+					ChatID:          upd.CallbackQuery.Message.Chat.ID,
+					UserID:          upd.CallbackQuery.Message.From.ID,
+					Username:        upd.CallbackQuery.From.UserName,
+					UsernameDisplay: upd.CallbackQuery.From.UserName,
+					Text:            upd.CallbackQuery.Data,
+					IsCallback:      true,
+					CallbackMsgID:   upd.CallbackQuery.Message.MessageID,
+				})
+
 			}
 
 			currentOffset = upd.UpdateID

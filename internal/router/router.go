@@ -26,7 +26,7 @@ type userService interface {
 
 type notificationService interface {
 	AddCommand(ctx context.Context, message models.IncomingMessage) error
-	HandleMessage(ctx context.Context, message models.IncomingMessage) error
+	BuildNotification(ctx context.Context, message models.IncomingMessage) error
 }
 
 type Router struct {
@@ -43,15 +43,15 @@ func New(telegramClient telegramClient, userService userService, notificationSer
 	}
 }
 
-func (r *Router) Route(ctx context.Context, msg *models.IncomingMessage) {
-	if msg.Text == "/start" {
+func (r *Router) RouteMessage(ctx context.Context, msg *models.IncomingMessage) {
+	if msg.Text == startCommand {
 		if err := r.userService.StartCommand(ctx, *msg); err != nil {
 			log.Println(err)
 		}
 		return
 	}
 
-	if msg.Text == "/add" {
+	if msg.Text == addCommand {
 		if err := r.notificationService.AddCommand(ctx, *msg); err != nil {
 			log.Println(err)
 		}
@@ -59,9 +59,16 @@ func (r *Router) Route(ctx context.Context, msg *models.IncomingMessage) {
 	}
 
 	if msg.Text != "" {
-		if err := r.notificationService.HandleMessage(ctx, *msg); err != nil {
+		if err := r.notificationService.BuildNotification(ctx, *msg); err != nil {
 			log.Println(err)
 		}
 		return
 	}
+}
+
+func (r *Router) RouteCallback(ctx context.Context, msg *models.IncomingMessage) {
+	if err := r.notificationService.BuildNotification(ctx, *msg); err != nil {
+		log.Println(err)
+	}
+	return
 }

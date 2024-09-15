@@ -45,6 +45,23 @@ func (c *Client) SendTextMessage(_ context.Context, chatID int64, text string) e
 	return nil
 }
 
+func (c *Client) RequestCallback(_ context.Context, id, text string) error {
+	callback := tgbotapi.NewCallback(id, text)
+	if _, err := c.bot.Request(callback); err != nil {
+		return fmt.Errorf("error while request telegram api: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) DeleteInlineButtons(_ context.Context, chatID int64, messageID int) error {
+	editMsg := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.NewInlineKeyboardMarkup([]tgbotapi.InlineKeyboardButton{}))
+	if _, err := c.bot.Send(editMsg); err != nil {
+		return fmt.Errorf("send edit message error: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) SendMessage(_ context.Context, message tgbotapi.MessageConfig) error {
 	_, err := c.bot.Send(message)
 	if err != nil {
